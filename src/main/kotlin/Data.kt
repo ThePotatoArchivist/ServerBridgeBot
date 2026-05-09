@@ -1,50 +1,52 @@
 package archives.tater.bot.bridge
 
-import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.WebhookBehavior
-import dev.kord.core.behavior.channel.TextChannelBehavior
-import dev.kord.core.entity.channel.TextChannel
-import dev.kord.core.exception.EntityNotFoundException
+import dev.kord.core.behavior.channel.MessageChannelBehavior
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ChannelConnection(val channelId: Snowflake, val webhookId: Snowflake) {
-    lateinit var channel: TextChannelBehavior
-    lateinit var webhook: WebhookBehavior
+data class ChannelConnection(val channel: MessageChannelRef, val webhook: WebhookRef) : Validatable {
+    constructor(channel: MessageChannelBehavior, webhook: WebhookBehavior)
+            : this(MessageChannelRef(channel), WebhookRef(webhook))
 
     context(kord: Kord)
-    suspend fun getChannel(): TextChannelBehavior {
-        if (::channel.isInitialized) return channel
-        return (kord.getChannel(channelId) as? TextChannel)?.also {
-            channel = it
-        } ?: EntityNotFoundException.channelNotFound<TextChannel>(channelId)
-    }
+    override suspend fun validate(): Boolean = channel.validate() && webhook.validate()
 
-    context(kord: Kord)
-    suspend fun getWebhook(): WebhookBehavior {
-        if (::webhook.isInitialized) return webhook
-        return kord.getWebhook(webhookId).also {
-            webhook = it
-        }
-    }
 }
 
 @Serializable
-data class BridgeConnection(val channels: Set<ChannelConnection>)
+data class BridgeConnection(val channels: MutableSet<ChannelConnection>) : Validatable {
+    constructor(vararg channels: ChannelConnection) : this(channels.toMutableSet())
+
+    context(kord: Kord)
+    override suspend fun validate(): Boolean {
+        channels.removeMatching {
+            !it.validate()
+        }
+        return channels.size > 1
+    }
+
+}
 
 @Serializable
-data class SaveData(private val connections: MutableList<BridgeConnection> = mutableListOf()) {
+data class BridgeConnections(private val connections: MutableList<BridgeConnection> = mutableListOf()) : Validatable {
+    context(kord: Kord)
+    override suspend fun validate(): Boolean {
+        connections.removeMatching { !it.validate() }
+        return true
+    }
+
     private val connectionsByChannel = connections
-        .flatMap { it.channels.map { [channelId] -> channelId to it } }
+        .flatMap { it.channels.map { [channel] -> channel to it } }
         .associate { it }
         .toMutableMap()
 
     fun add(connection: BridgeConnection) {
         // TODO check allowed
         connections.add(connection)
-        for ([channelId] in connection.channels)
-            connectionsByChannel[channelId] = connection
+        for ([channel] in connection.channels)
+            connectionsByChannel[channel] = connection
     }
 
 }
