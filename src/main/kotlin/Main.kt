@@ -26,6 +26,8 @@ import dev.kord.rest.builder.message.AttachmentBuilder
 import dev.kord.rest.builder.message.allowedMentions
 import dev.kord.rest.builder.message.messageFlags
 import io.github.cdimascio.dotenv.Dotenv
+import jdk.internal.joptsimple.internal.Messages.message
+import kotlinx.coroutines.flow.merge
 import kotlinx.serialization.json.JsonNull.content
 import sun.security.jgss.GSSUtil.login
 import kotlin.apply
@@ -51,6 +53,21 @@ suspend fun main() {
             val response = interaction.deferPublicResponse()
 
             val otherChannelId = Snowflake(interaction.command.strings["channel"]!!.toLong())
+
+            if (saveData.value[interaction.channel] != null) {
+                response.respond {
+                    content = "Cannot connect to multiple channels"
+                }
+                return@on
+            }
+
+            if (saveData.value[otherChannelId] != null) {
+                response.respond {
+                    content = "That channel is already connected"
+                }
+                return@on
+            }
+
             val otherChannel = interaction.kord.getChannelOf<GuildMessageChannel>(otherChannelId) ?: run {
                 response.respond {
                     content = "Could not find or access channel `${otherChannelId}`"
@@ -59,10 +76,12 @@ suspend fun main() {
             }
 
             saveData.update {
-                it.add(BridgeConnection(
-                    ChannelConnection(interaction.channel, getOrCreateWebhookFor(interaction.channel)!!),
-                    ChannelConnection(otherChannel, getOrCreateWebhookFor(otherChannel)!!)
-                ))
+                it.add(
+                    BridgeConnection(
+                        ChannelConnection(interaction.channel, getOrCreateWebhookFor(interaction.channel)!!),
+                        ChannelConnection(otherChannel, getOrCreateWebhookFor(otherChannel)!!)
+                    )
+                )
             }
 
             response.respond {

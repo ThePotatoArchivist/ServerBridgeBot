@@ -58,6 +58,8 @@ data class BridgeConnections(private val connections: MutableList<BridgeConnecti
             connectionsByChannel[channel.value.id] = connection
     }
 
-    operator fun get(channel: ChannelBehavior): BridgeConnection? = connectionsByChannel[channel.id]
+    operator fun get(channel: ChannelBehavior): BridgeConnection? = get(channel.id)
+
+    operator fun get(channelId: Snowflake): BridgeConnection? = connectionsByChannel[channelId]
 
 }
