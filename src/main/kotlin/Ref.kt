@@ -5,6 +5,7 @@ import dev.kord.core.Kord
 import dev.kord.core.behavior.WebhookBehavior
 import dev.kord.core.behavior.channel.MessageChannelBehavior
 import dev.kord.core.entity.KordEntity
+import dev.kord.core.entity.Webhook
 import dev.kord.core.entity.channel.MessageChannel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -45,10 +46,10 @@ data class MessageChannelRef(override val id: Snowflake) : Ref<MessageChannelBeh
 }
 
 @Serializable(with = WebhookRef.Serializer::class)
-data class WebhookRef(override val id: Snowflake) : Ref<WebhookBehavior>() {
-    constructor(webhook: WebhookBehavior) : this(webhook.id) { value = webhook }
+data class WebhookRef(override val id: Snowflake) : Ref<Webhook>() {
+    constructor(webhook: Webhook) : this(webhook.id) { value = webhook }
 
-    override suspend fun Kord.get(): WebhookBehavior? = getWebhookOrNull(id)
+    override suspend fun Kord.get(): Webhook? = getWebhookOrNull(id)
 
     object Serializer : Ref.Serializer<WebhookRef>(::WebhookRef)
 

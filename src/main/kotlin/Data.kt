@@ -1,13 +1,19 @@
 package archives.tater.bot.bridge
 
+import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
+import dev.kord.core.behavior.MessageBehavior
 import dev.kord.core.behavior.WebhookBehavior
+import dev.kord.core.behavior.channel.ChannelBehavior
 import dev.kord.core.behavior.channel.MessageChannelBehavior
+import dev.kord.core.entity.Webhook
+import dev.kord.core.entity.channel.MessageChannel
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class ChannelConnection(val channel: MessageChannelRef, val webhook: WebhookRef) : Validatable {
-    constructor(channel: MessageChannelBehavior, webhook: WebhookBehavior)
+    constructor(channel: MessageChannelBehavior, webhook: Webhook)
             : this(MessageChannelRef(channel), WebhookRef(webhook))
 
     context(kord: Kord)
@@ -16,7 +22,7 @@ data class ChannelConnection(val channel: MessageChannelRef, val webhook: Webhoo
 }
 
 @Serializable
-data class BridgeConnection(val channels: MutableSet<ChannelConnection>) : Validatable {
+data class BridgeConnection(val channels: MutableSet<ChannelConnection>, @Transient val messages: MutableMap<MessageBehavior, List<MessageBehavior>> = mutableMapOf()) : Validatable {
     constructor(vararg channels: ChannelConnection) : this(channels.toMutableSet())
 
     context(kord: Kord)
@@ -31,22 +37,27 @@ data class BridgeConnection(val channels: MutableSet<ChannelConnection>) : Valid
 
 @Serializable
 data class BridgeConnections(private val connections: MutableList<BridgeConnection> = mutableListOf()) : Validatable {
+
+    @Transient
+    private lateinit var connectionsByChannel: MutableMap<Snowflake, BridgeConnection>
+
     context(kord: Kord)
     override suspend fun validate(): Boolean {
         connections.removeMatching { !it.validate() }
+        connectionsByChannel = connections
+            .flatMap { it.channels.map { (channel) -> channel.value.id to it } }
+            .associate { it }
+            .toMutableMap()
         return true
     }
-
-    private val connectionsByChannel = connections
-        .flatMap { it.channels.map { [channel] -> channel to it } }
-        .associate { it }
-        .toMutableMap()
 
     fun add(connection: BridgeConnection) {
         // TODO check allowed
         connections.add(connection)
-        for ([channel] in connection.channels)
-            connectionsByChannel[channel] = connection
+        for ((channel) in connection.channels)
+            connectionsByChannel[channel.value.id] = connection
     }
+
+    operator fun get(channel: ChannelBehavior): BridgeConnection? = connectionsByChannel[channel.id]
 
 }

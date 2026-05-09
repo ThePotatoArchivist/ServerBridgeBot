@@ -9,6 +9,7 @@ import dev.kord.core.Kord
 import dev.kord.core.behavior.channel.GuildMessageChannelBehavior
 import dev.kord.core.behavior.channel.MessageChannelBehavior
 import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.execute
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.channel.GuildMessageChannel
@@ -16,14 +17,18 @@ import dev.kord.core.entity.channel.TopGuildMessageChannel
 import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
+import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.builder.interaction.string
+import dev.kord.rest.builder.message.AttachmentBuilder
 import dev.kord.rest.builder.message.allowedMentions
 import dev.kord.rest.builder.message.messageFlags
 import io.github.cdimascio.dotenv.Dotenv
 import kotlinx.serialization.json.JsonNull.content
+import sun.security.jgss.GSSUtil.login
+import kotlin.apply
 import kotlin.io.path.Path
 
 val dotenv: Dotenv = Dotenv.load()
@@ -67,6 +72,22 @@ suspend fun main() {
                 content = "${interaction.user.mention}: Connected to ${interaction.channel.mention}"
                 messageFlags {
                     +MessageFlag.SuppressNotifications
+                }
+            }
+        }
+
+        on<MessageCreateEvent> {
+            if (member?.isSelf == true || message.webhookId != null) return@on
+
+            saveData.value[message.channel]?.apply {
+                messages[message] = channels.mapNotNull { (channel, webhook) ->
+                    if (channel.id == message.channel.id) return@mapNotNull null
+
+                    webhook.value.execute(webhook.value.token!!) {
+                        avatarUrl = member?.avatar?.cdnUrl?.toUrl()
+                        username = member?.effectiveName
+                        content = message.content.takeUnless { it.isBlank() } ?: "*ERROR: No content*"
+                    }
                 }
             }
         }
