@@ -58,6 +58,12 @@ data class BridgeConnections(private val connections: MutableList<BridgeConnecti
             connectionsByChannel[channel.value.id] = connection
     }
 
+    fun remove(connection: BridgeConnection) {
+        connections.remove(connection)
+        for ((channel) in connection.channels)
+            connectionsByChannel.remove(channel.value.id)
+    }
+
     operator fun get(channel: ChannelBehavior): BridgeConnection? = get(channel.id)
 
     operator fun get(channelId: Snowflake): BridgeConnection? = connectionsByChannel[channelId]
