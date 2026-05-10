@@ -23,8 +23,8 @@ class SaveData<T>(val file: Path, var value: T) {
             Json.encodeToStream<T>(value, file.outputStream())
         }
 
-        inline fun <reified T> SaveData<T>.update(action: (T) -> Unit) {
-            action(value)
+        inline fun <reified T> SaveData<T>.update(action: T.() -> Unit) {
+            value.action()
             save()
         }
     }

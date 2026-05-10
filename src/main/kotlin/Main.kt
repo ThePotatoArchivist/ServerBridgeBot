@@ -156,7 +156,7 @@ suspend fun connectBridge(interaction: GuildChatInputCommandInteraction, otherCh
     }
 
     saveData.update {
-        it.add(
+        add(
             BridgeConnection(
                 ChannelConnection(interaction.channel, getOrCreateWebhookFor(interaction.channel)!!),
                 ChannelConnection(otherChannel, getOrCreateWebhookFor(otherChannel)!!)
@@ -186,7 +186,7 @@ suspend fun disconnectBridge(interaction: GuildChatInputCommandInteraction) {
     val response = interaction.deferPublicResponse()
 
     saveData.update {
-        it.remove(connection)
+        remove(connection)
     }
 
     response.respond {
