@@ -54,7 +54,7 @@ suspend fun main() {
 
         on<GuildChatInputCommandInteractionCreateEvent> {
             when (interaction.invokedCommandId) {
-                bridgeCommand.id -> connectBridge(interaction, Snowflake(interaction.command.strings["channel"]!!.toLong()))
+                bridgeCommand.id -> connectBridge(interaction, interaction.command.strings["channel"]!!)
                 unbridgeCommand.id -> disconnectBridge(interaction)
             }
         }
@@ -117,22 +117,36 @@ suspend fun bridgeMessageDelete(channel: ChannelBehavior, messageId: Snowflake) 
         messages[messageId]?.delete(webhook.id, webhook.value.token!!)
 }
 
-suspend fun connectBridge(interaction: GuildChatInputCommandInteraction, otherChannelId: Snowflake) {
-    val response = interaction.deferPublicResponse()
+suspend fun connectBridge(interaction: GuildChatInputCommandInteraction, otherChannelId: String) {
+    val otherChannelId = try { Snowflake(otherChannelId) } catch (_: NumberFormatException) {
+        interaction.respondEphemeral {
+            content = "Invalid channel id `${otherChannelId}`"
+        }
+        return
+    }
+
+    if (interaction.channelId == otherChannelId) {
+        interaction.respondEphemeral {
+            content = "Cannot connect channel to itself"
+        }
+        return
+    }
 
     if (saveData.value[interaction.channel] != null) {
-        response.respond {
+        interaction.respondEphemeral {
             content = "Cannot connect to multiple channels"
         }
         return
     }
 
     if (saveData.value[otherChannelId] != null) {
-        response.respond {
-            content = "That channel is already connected"
+        interaction.respondEphemeral {
+            content = "That channel is already connected to another channel"
         }
         return
     }
+
+    val response = interaction.deferPublicResponse()
 
     val otherChannel = interaction.kord.getChannelOf<GuildMessageChannel>(otherChannelId) ?: run {
         response.respond {
