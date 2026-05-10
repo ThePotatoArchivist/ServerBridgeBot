@@ -30,5 +30,5 @@ tasks.test {
 
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.compilerOptions {
-    freeCompilerArgs.set(listOf("-Xcontext-parameters", "-Xname-based-destructuring=only-syntax"))
+    freeCompilerArgs.set(listOf("-Xcontext-parameters", "-Xname-based-destructuring=complete"))
 }

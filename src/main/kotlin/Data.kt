@@ -12,7 +12,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
 @Serializable
-data class ChannelConnection(val channel: MessageChannelRef, val webhook: WebhookRef) : Validatable {
+data class ChannelConnection(val channel: MessageChannelRef, val webhook: WebhookRef, @Transient val messages: MutableMap<Snowflake, MessageBehavior> = mutableMapOf()) : Validatable {
     constructor(channel: MessageChannelBehavior, webhook: Webhook)
             : this(MessageChannelRef(channel), WebhookRef(webhook))
 
@@ -22,7 +22,7 @@ data class ChannelConnection(val channel: MessageChannelRef, val webhook: Webhoo
 }
 
 @Serializable
-data class BridgeConnection(val channels: MutableSet<ChannelConnection>, @Transient val messages: MutableMap<MessageBehavior, List<MessageBehavior>> = mutableMapOf()) : Validatable {
+data class BridgeConnection(val channels: MutableSet<ChannelConnection>) : Validatable {
     constructor(vararg channels: ChannelConnection) : this(channels.toMutableSet())
 
     context(kord: Kord)
