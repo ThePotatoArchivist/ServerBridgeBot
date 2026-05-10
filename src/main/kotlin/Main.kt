@@ -88,7 +88,7 @@ suspend fun main() {
 
 val UserData.displayName get() = globalName.value ?: username
 
-private fun getReplyContent(message: Message) = "↪ ${message.data.author.displayName} ${message.content.split('\n').run {
+private fun getReplyContent(message: Message) = "↪ **${message.data.author.displayName}** ${message.content.split('\n').run {
     firstOrNull { !it.startsWith("-# ") } ?: first()
 }}"
 
