@@ -1,8 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import sun.jvmstat.monitor.MonitoredVmUtil.mainClass
 
 plugins {
     kotlin("jvm") version "2.3.10"
     kotlin("plugin.serialization") version "2.3.21"
+    id("application")
 }
 
 group = "archives.tater.bot.bridge"
@@ -31,4 +33,8 @@ tasks.test {
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.compilerOptions {
     freeCompilerArgs.set(listOf("-Xcontext-parameters", "-Xname-based-destructuring=complete"))
+}
+
+application {
+    mainClass = "archives.tater.bot.bridge.Main"
 }
