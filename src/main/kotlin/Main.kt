@@ -15,6 +15,7 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.execute
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.cache.data.UserData
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.Message
@@ -85,22 +86,27 @@ suspend fun main() {
     }
 }
 
+val UserData.displayName get() = globalName.value ?: username
+
+private fun getReplyContent(message: Message) = "↪ ${message.data.author.displayName} ${message.content.split('\n').run {
+    firstOrNull { !it.startsWith("-# ") } ?: first()
+}}"
+
 private fun getContent(message: Message, replied: Message? = null, repliedChannel: GuildChannelBehavior? = null): String =
     (when {
         replied == null -> ""
-        repliedChannel == null -> "-# ↪ ${replied.author?.effectiveName} ${replied.content}\n"
-        else -> "-# [↪ ${replied.author?.effectiveName} ${replied.content}](<https://discord.com/channels/${repliedChannel.guildId}/${repliedChannel.id}/${replied.id}>)\n"
+        repliedChannel == null -> "-# ${getReplyContent(replied)}\n"
+        else -> "-# [${getReplyContent(message)}](<https://discord.com/channels/${repliedChannel.guildId}/${repliedChannel.id}/${replied.id}>)\n"
     }) +
     message.content +
     message.attachments.joinToString(separator = "") {
         "\n" + it.url
     }
 
-private suspend fun getContent(message: Message, bridgedMessages: Map<Snowflake, MessageBehavior>): String {
-    val replied = message.referencedMessage ?: return getContent(message)
-    val bridgedReplyTo = bridgedMessages[replied.id]?.asMessage() ?: return getContent(message, replied)
-    val repliedChannel = bridgedReplyTo.channel.asChannel() as? GuildChannelBehavior ?: return getContent(message, bridgedReplyTo)
-    return getContent(message, bridgedReplyTo, repliedChannel)
+private fun getContent(message: Message): String {
+    val replied = message.referencedMessage ?: return getContent(message, null)
+//    val repliedChannel = replied.channel.asChannel() as? GuildChannelBehavior ?: return getContent(message, replied)
+    return getContent(message, replied, null)
 }
 
 suspend fun bridgeMessageCreate(message: Message, member: Member?) {
@@ -114,7 +120,7 @@ suspend fun bridgeMessageCreate(message: Message, member: Member?) {
             connection.putMessages(message, webhook.value.execute(webhook.value.token!!) {
                 avatarUrl = member?.avatar?.cdnUrl?.toUrl()
                 username = member?.effectiveName
-                content = getContent(message, messages)
+                content = getContent(message)
             })
         }
     }
@@ -125,7 +131,7 @@ suspend fun bridgeMessageUpdate(message: MessageBehavior) {
     val message1 = message.asMessage()
     for ((webhook, messages) in bridgeConnection.channels)
         messages[message.id]?.edit(webhook.id, webhook.value.token!!) {
-            content = getContent(message1, messages)
+            content = getContent(message1)
         }
 }
 
